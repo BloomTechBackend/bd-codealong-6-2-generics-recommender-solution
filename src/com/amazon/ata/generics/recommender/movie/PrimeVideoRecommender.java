@@ -3,6 +3,8 @@ package com.amazon.ata.generics.recommender.movie;
 import com.amazon.ata.generics.recommender.MostRecentlyUsed;
 import com.amazon.ata.generics.recommender.ReadOnlyDao;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 
 /**
@@ -13,8 +15,9 @@ import java.util.Random;
  */
 public class PrimeVideoRecommender {
     // PARTICIPANT -- Update the generic types in PrimeVideoRecommender
-    private MostRecentlyUsed<?> mostRecentlyViewed;
-    private ReadOnlyDao<?, ?> primeVideoDao;
+    private MostRecentlyUsed<PrimeVideo> mostRecentlyViewed;
+//    List<PrimeVideo> primeVideoList = new ArrayList<>();
+    private ReadOnlyDao<Long, PrimeVideo> primeVideoDao;
     private Random random;
 
     /**
@@ -25,8 +28,8 @@ public class PrimeVideoRecommender {
      * @param random             the random
      */
     // PARTICIPANT -- Update the generic types in PrimeVideoRecommender
-    public PrimeVideoRecommender(MostRecentlyUsed<?> mostRecentlyViewed,
-                                 ReadOnlyDao<?, ?> primeVideoDao, Random random) {
+    public PrimeVideoRecommender(MostRecentlyUsed<PrimeVideo> mostRecentlyViewed,
+                                 ReadOnlyDao<Long, PrimeVideo> primeVideoDao, Random random) {
         this.mostRecentlyViewed = mostRecentlyViewed;
         this.primeVideoDao = primeVideoDao;
         this.random = random;
@@ -40,7 +43,11 @@ public class PrimeVideoRecommender {
      * @param videoId ID of the video that was watched on Prime Video
      */
     public void watch(long videoId) {
-        // PARTICIPANT -- Implement watch()
+        PrimeVideo primeVideo = primeVideoDao.get(videoId);
+        if (primeVideo == null) {
+            throw new IllegalArgumentException("Video not found for id " + videoId);
+        }
+        mostRecentlyViewed.add(primeVideo);
     }
 
     /**
@@ -56,7 +63,27 @@ public class PrimeVideoRecommender {
      * @return PrimeVideo to recommend watching.
      */
     public PrimeVideo getRecommendation() {
-        // PARTICIPANT -- Implement getRecommendation()
-        return null;
+        if (mostRecentlyViewed.getSize() == 0) {
+            return null;
+        }
+        int randomIndex = this.random.nextInt(mostRecentlyViewed.getSize());
+        Long recommendedId = null;
+        for (int i = randomIndex; i < mostRecentlyViewed.getSize(); i++) { // start at the randomIndex but keep trying
+            PrimeVideo randomVideo = mostRecentlyViewed.get(randomIndex);
+            recommendedId = randomVideo.getMostSimilarId();
+            if (recommendedId == null)
+                break;
+            PrimeVideo recommendedVideo = primeVideoDao.get(recommendedId);
+            return recommendedVideo;
+        }
+        for (int i = 0; i < randomIndex; i++) { // now start at the beginning
+            PrimeVideo randomVideo = mostRecentlyViewed.get(randomIndex);
+            recommendedId = randomVideo.getMostSimilarId();
+            if (recommendedId == null)
+                break;
+            PrimeVideo recommendedVideo = primeVideoDao.get(recommendedId);
+            return recommendedVideo;
+        }
+        return null; // we checked all the videos and didn't find anything to recommend
     }
 }
